@@ -75,6 +75,7 @@ sources = [
   'src/URL.c',
   'src/SessionStore.c',
   'src/FileSessionStore.c',
+  'src/MemcachedSessionStore.c',
 
     'src/xml/__init__.c']
 
@@ -245,6 +246,7 @@ class build_ext(_build_ext):
       '/usr/local/lib'])
     
     self.libraries.append('fcgi')
+    self.libraries.append('memcached')
     self.define = [
       ('SMISK_VERSION', '"%s"' % version),
       ('SMISK_BUILD_ID', '"%s"' % core_build_id()),
