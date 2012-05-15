@@ -4,6 +4,7 @@ from smisk.core import Application
 import sys, os, socket
 from datetime import datetime
 from time import sleep
+import tempfile
 
 class MyApp(Application):
   def __init__(self, *args, **kwargs):
@@ -28,17 +29,15 @@ class MyApp(Application):
       "self.request.session_id: %r\n" % self.request.session_id
     )
 
-
-    try:
-      self.response("active: %r\n" % self.request.is_active)
-      #self.response("session: %r\n" % self.request.session)
-    except:
-      print "Unexpected error:", sys.exc_info()[0]
-      pass
-
-    sleep(0.5)
-
 try:
+  # Simulate non-shared sessions for instances running on the same machine
+  # by appending PID to tmp path used by smisk_FileSessionStore_path
+
+  tempdir = "/tmp/smisk/smisk.%d" % os.getpid()
+  os.mkdir(tempdir)
+  tempfile.tempdir = tempdir
+
   MyApp().run()
+
 except KeyboardInterrupt:
   pass
