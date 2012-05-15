@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "URL.h"
 #include "SessionStore.h"
 #include "FileSessionStore.h"
+#include "MemcachedSessionStore.h"
 #include "xml/__init__.h"
 #include "crash_dump.h"
 
@@ -307,6 +308,7 @@ PyMODINIT_FUNC  PyInit__smisk(void)    /* Note the two underscores */
   R(URL_register_types, != 0);
   R(SessionStore_register_types, != 0);
   R(FileSessionStore_register_types, != 0);
+  R(MemcachedSessionStore_register_types, != 0);
   R(xml_register, == NULL);
   #undef R
   

@@ -1,6 +1,7 @@
 #!/usr/local/bin/python2.5
 # encoding: utf-8
 from smisk.core import Application
+from smisk.config import config
 import sys, os, socket
 from datetime import datetime
 from time import sleep
@@ -17,10 +18,14 @@ class MyApp(Application):
     if self.request.session == None:
       self.request.session = os.getpid()
 
+    val = config.get('smisk.memcached.configstring')
+    memcached = self.memcached
+
     self.response.headers = ["Content-Type: text/plain"]
     self.response(
       "This comes from a separately running process.\n\n",
       "Host:          %s\n" % socket.getfqdn(),
+      "Config val:          %s\n" % memcached,
       "Process id:    %d\n" % os.getpid(),
       "Process owner: %s\n" % os.getenv('USER'),
       "self.request.url: %r\n" % self.request.url,
@@ -37,6 +42,7 @@ try:
   os.mkdir(tempdir)
   tempfile.tempdir = tempdir
 
+  config.load('shared-sessions.conf')
   MyApp().run()
 
 except KeyboardInterrupt:
