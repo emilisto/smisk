@@ -11,6 +11,7 @@ class MyApp(Application):
   def __init__(self, *args, **kwargs):
 
     self.sessions.ttl = 10
+    self.sessions.memcached_config = "--SERVER=localhost:11211"
 
   def service(self):
 
@@ -19,7 +20,7 @@ class MyApp(Application):
       self.request.session = os.getpid()
 
     val = config.get('smisk.memcached.configstring')
-    memcached = self.memcached
+    memcached = self.sessions.memcached_config
 
     self.response.headers = ["Content-Type: text/plain"]
     self.response(

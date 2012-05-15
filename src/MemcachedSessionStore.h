@@ -23,13 +23,15 @@ THE SOFTWARE.
 #define SMISK_MEMCACHED_SESSION_STORE_H
 
 #include "SessionStore.h"
+#include <libmemcached/memcached.h>
 
 typedef struct {
   smisk_SessionStore parent;
-  
+  memcached_st   *memc;
+  PyObject       *memcached_config; // str
+
   // Public Python & C
 } smisk_MemcachedSessionStore;
-
 
 extern PyTypeObject smisk_MemcachedSessionStoreType;
 
