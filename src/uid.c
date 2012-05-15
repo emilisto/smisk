@@ -45,13 +45,24 @@ int smisk_uid_create(smisk_uid_t *uid, const char *node, size_t node_length) {
   d.pid = htonl(getpid());
   d.salt = random();
   
-  sha1_init(&sha1_ctx);
-  sha1_update(&sha1_ctx, (byte *)&d, sizeof(d));
+
+  // sha1_final causes a buffer overflow overwriting uid's memory
+  //
+  // `gcc -v`: gcc version 4.2.1 (Based on Apple Inc. build 5658) (LLVM build 2336.1.00)
+  // `uname -a`: Darwin X 11.3.0 Darwin Kernel Version 11.3.0: root:xnu-1699.24.23~1/RELEASE_X86_64 x86_64
+
+  /* sha1_init(&sha1_ctx);*/
+  /* sha1_update(&sha1_ctx, (byte *)&d, sizeof(d));*/
   
-  if ((node != NULL) && node_length)
-    sha1_update(&sha1_ctx, (byte *)node, node_length);
+  /* if ((node != NULL) && node_length)*/
+  /*   sha1_update(&sha1_ctx, (byte *)node, node_length);*/
   
-  sha1_final(&sha1_ctx, uid->digest);
+  /* sha1_final(&sha1_ctx, uid->digest);*/
+
+  // I use this workaround to be able to use sessions, without digging into the
+  // gory details of this bug:
+
+  memcpy(uid->digest, (byte*)&d.salt, sizeof(long));
   
   return 0;
 }
