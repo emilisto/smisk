@@ -39,12 +39,21 @@ THE SOFTWARE.
 
 int smisk_MemcachedSessionStore_init(smisk_MemcachedSessionStore *self, PyObject *args, PyObject *kwargs) {  
   log_trace("ENTER");
+
+  self->memcached_config = PyBytes_FromString("testing"); Py_INCREF(self->memcached_config);
+
   return 0;
 }
 
 
 void smisk_MemcachedSessionStore_dealloc(smisk_MemcachedSessionStore *self) {
   log_trace("ENTER");
+
+  if(self->memc != NULL) {
+    memcached_free(self->memc);
+  }
+
+  Py_DECREF(self->memcached_config);
   ((smisk_SessionStore *)self)->ob_type->tp_base->tp_dealloc((PyObject *)self);
 
   log_debug("EXIT smisk_MemcachedSessionStore_dealloc");
@@ -52,6 +61,22 @@ void smisk_MemcachedSessionStore_dealloc(smisk_MemcachedSessionStore *self) {
 
 #pragma mark -
 #pragma mark Methods
+
+PyDoc_STRVAR(smisk_MemcachedSessionStore_memcached_DOC,
+  ":param  session_id: Session ID\n"
+  ":type   session_id: string\n"
+  ":rtype: string");
+static PyObject *smisk_MemcachedSessionStore_memcached(smisk_MemcachedSessionStore *self, PyObject *session_id) {
+  log_trace("ENTER");
+  PyObject *fn;
+
+  if(self->memc == NULL) {
+    char *config = PyBytes_AsString(self->memcached_config);
+    self->memc = memcached(config, strlen(config));
+  }
+
+  return self->memc;
+}
 
 
 PyDoc_STRVAR(smisk_MemcachedSessionStore_read_DOC,
@@ -68,6 +93,8 @@ PyObject *smisk_MemcachedSessionStore_read(smisk_MemcachedSessionStore *self, Py
     PyErr_SetString(PyExc_TypeError, "session_id must be a string");
     return NULL;
   }
+
+  memcached_st *memc = smisk_MemcachedSessionStore_memcached(self, session_id);
 
   // Find session
   // key = ...;
@@ -164,6 +191,7 @@ static PyMethodDef smisk_MemcachedSessionStore_methods[] = {
 
 // Class members
 static struct PyMemberDef smisk_MemcachedSessionStore_members[] = {
+  {"memcached_config", T_OBJECT_EX, offsetof(smisk_MemcachedSessionStore, memcached_config), 0, ":type: string"},
   {NULL, 0, 0, 0, NULL}
 };
 

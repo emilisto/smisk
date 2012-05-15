@@ -37,7 +37,6 @@ typedef struct {
   PyObject       *sessions; // lazy Session store
   
   PyObject       *show_traceback; // bool
-  PyObject       *memcached; // str
   int            forks; // int
   
   PyObject       *charset; // str

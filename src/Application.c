@@ -217,7 +217,6 @@ PyObject * smisk_Application_new(PyTypeObject *type, PyObject *args, PyObject *k
     self->sessions = NULL;
   
     // Default values
-    self->memcached = PyBytes_FromString("testing"); Py_INCREF(self->memcached);
     self->show_traceback = Py_True; Py_INCREF(Py_True);
     self->tolerant = Py_True; Py_INCREF(Py_True);
     self->forks = 0;
@@ -255,7 +254,6 @@ void smisk_Application_dealloc(smisk_Application *self) {
   Py_DECREF(self->response);
   Py_XDECREF(self->sessions);
   Py_DECREF(self->show_traceback);
-  Py_DECREF(self->memcached);
   Py_DECREF(self->tolerant);
   Py_DECREF(self->charset);
   
@@ -802,7 +800,6 @@ static struct PyMemberDef smisk_Application_members[] = {
   {"request", T_OBJECT_EX, offsetof(smisk_Application, request),  RO, ":type: Request"},
   {"response", T_OBJECT_EX, offsetof(smisk_Application, response), RO, ":type: Response"},
   {"show_traceback", T_OBJECT_EX, offsetof(smisk_Application, show_traceback), 0, ":type: bool"},
-  {"memcached", T_OBJECT_EX, offsetof(smisk_Application, memcached), 0, ":type: string"},
   {"forks", T_INT, offsetof(smisk_Application, forks), 0, ":type: int"},
   {NULL, 0, 0, 0, NULL}
 };
