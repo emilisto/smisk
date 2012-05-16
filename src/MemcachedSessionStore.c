@@ -25,11 +25,8 @@ THE SOFTWARE.
 #include "MemcachedSessionStore.h"
 
 /*
- * DEVELOPER NOTES
- *
  * Memcached command reference:
  * http://code.google.com/p/memcached/wiki/NewCommands
- *
  */
 
 #include <marshal.h>
@@ -45,7 +42,6 @@ int smisk_MemcachedSessionStore_init(smisk_MemcachedSessionStore *self, PyObject
 
   return 0;
 }
-
 
 void smisk_MemcachedSessionStore_dealloc(smisk_MemcachedSessionStore *self) {
   log_trace("ENTER");
@@ -86,10 +82,14 @@ PyDoc_STRVAR(smisk_MemcachedSessionStore_mcdKey_DOC,
 static PyObject *smisk_MemcachedSessionStore_mcdKey(smisk_MemcachedSessionStore *self, PyObject *session_id) {
   log_trace("ENTER");
 
-  PyObject *str = PyBytes_FromString("session-");
-  PyBytes_Concat(&str, session_id);
+  char *key; PyObject *str;
 
-  return str;
+  str = PyBytes_FromString("session-");
+  PyBytes_Concat(&str, session_id);
+  key = PyBytes_AsString(str);
+  Py_DECREF(str);
+
+  return key;
 }
 
 PyDoc_STRVAR(smisk_MemcachedSessionStore_read_DOC,
@@ -103,7 +103,7 @@ PyObject *smisk_MemcachedSessionStore_read(smisk_MemcachedSessionStore *self, Py
   PyObject *data = NULL;
   char *mdata;
   size_t mdata_length;
-  memcached_return_t error;
+  memcached_return_t rc;
 
   if ( !SMISK_STRING_CHECK(session_id) ) {
     PyErr_SetString(PyExc_TypeError, "session_id must be a string");
@@ -113,14 +113,10 @@ PyObject *smisk_MemcachedSessionStore_read(smisk_MemcachedSessionStore *self, Py
   memcached_st *memc = smisk_MemcachedSessionStore_memcached(self, session_id);
 
   char *key = smisk_MemcachedSessionStore_mcdKey(self, session_id);
-  mdata = memcached_get(memc, key, strlen(key), &mdata_length, NULL, &error);
+  mdata = memcached_get(memc, key, strlen(key), &mdata_length, NULL, &rc);
 
-  if(error == MEMCACHED_SUCCESS) {
-
+  if(rc == MEMCACHED_SUCCESS) {
     data = PyMarshal_ReadObjectFromString(mdata, mdata_length);
-    // Read session
-    // Check ttl
-
   } else {
     log_debug("No session data.");
     PyErr_SetString(smisk_InvalidSessionError, "no data");
@@ -142,8 +138,10 @@ PyObject *smisk_MemcachedSessionStore_write(smisk_MemcachedSessionStore *self, P
   log_trace("ENTER");
 
   PyObject *session_id, *data, *marshalled_data;
+  char *buf, *key; Py_ssize_t size;
   memcached_st *memc;
   memcached_return_t rc;
+  int ttl = ((smisk_SessionStore *)self)->ttl;
 
   if ( PyTuple_GET_SIZE(args) != 2 )
     return PyErr_Format(PyExc_TypeError, "this method takes exactly 2 arguments");
@@ -155,15 +153,14 @@ PyObject *smisk_MemcachedSessionStore_write(smisk_MemcachedSessionStore *self, P
     return NULL;
 
   memc = smisk_MemcachedSessionStore_memcached(self, session_id);
+  key = smisk_MemcachedSessionStore_mcdKey(self, session_id);
+
   marshalled_data = PyMarshal_WriteObjectToString(data, Py_MARSHAL_VERSION);
+  buf = (char *) malloc(PyBytes_Size(marshalled_data) + 1);
+  PyBytes_AsStringAndSize(marshalled_data, &buf, &size);
+  Py_DECREF(marshalled_data);
 
-  char *key = smisk_MemcachedSessionStore_mcdKey(self, session_id);
-  char *val = PyBytes_AsString(marshalled_data);
-
-  log_debug("Data: %s length: %d", val, strlen(val));
-
-  // FIXME: use ttl from session instead of 60
-  /* memcached_return_t rc = memcached_set(memc, key, strlen(key), val, strlen(val), 60, NULL);*/
+  rc = memcached_set(memc, key, strlen(key), buf, size, ttl, NULL);
   if(rc != MEMCACHED_SUCCESS) {
     log_debug("failed to set key");
 
@@ -186,13 +183,27 @@ PyDoc_STRVAR(smisk_MemcachedSessionStore_refresh_DOC,
 PyObject *smisk_MemcachedSessionStore_refresh(smisk_MemcachedSessionStore *self, PyObject *session_id) {
   log_trace("ENTER");
 
-  PyObject *key;
-  
-  /* if ( (key = smisk_FileSessionStore_path(self, session_id)) == NULL )*/
-    /* return NULL;*/
+  // TODO: this is somewhat inefficient: we do two roundtrips to the server to
+  // just update the TTL, even though we know nothing has changed. Refactor
+  // SessionStore code to give us the session data in this function.
 
-  PyErr_SetString(PyExc_NotImplementedError, "refresh");
-  return NULL;
+  log_debug("refreshing session");
+
+  PyObject *data = smisk_MemcachedSessionStore_read(self, session_id);
+
+  if(data == NULL) {
+    log_debug("couldn't find a session to refresh");
+    Py_RETURN_NONE;
+  }
+
+  PyObject *args = PyTuple_New(2);
+  PyTuple_SetItem(args, 0, session_id);
+  PyTuple_SetItem(args, 1, data);
+
+  PyObject *ret = smisk_MemcachedSessionStore_write(self, args);
+  Py_DECREF(args);
+
+  return ret;
 }
 
 
