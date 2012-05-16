@@ -32,6 +32,7 @@ THE SOFTWARE.
  *
  */
 
+#include <marshal.h>
 #include <libmemcached/memcached.h>
 #include <pythread.h>
 
@@ -78,6 +79,18 @@ static PyObject *smisk_MemcachedSessionStore_memcached(smisk_MemcachedSessionSto
   return self->memc;
 }
 
+PyDoc_STRVAR(smisk_MemcachedSessionStore_mcdKey_DOC,
+  ":param  session_id: Session ID\n"
+  ":type   session_id: string\n"
+  ":rtype: string");
+static PyObject *smisk_MemcachedSessionStore_mcdKey(smisk_MemcachedSessionStore *self, PyObject *session_id) {
+  log_trace("ENTER");
+
+  PyObject *str = PyBytes_FromString("session-");
+  PyBytes_Concat(&str, session_id);
+
+  return str;
+}
 
 PyDoc_STRVAR(smisk_MemcachedSessionStore_read_DOC,
   ":param  session_id: Session ID\n"
@@ -87,7 +100,10 @@ PyDoc_STRVAR(smisk_MemcachedSessionStore_read_DOC,
 PyObject *smisk_MemcachedSessionStore_read(smisk_MemcachedSessionStore *self, PyObject *session_id) {
   log_trace("ENTER");
 
-  PyObject *data = NULL, *key;
+  PyObject *data = NULL;
+  char *mdata;
+  size_t mdata_length;
+  memcached_return_t error;
 
   if ( !SMISK_STRING_CHECK(session_id) ) {
     PyErr_SetString(PyExc_TypeError, "session_id must be a string");
@@ -96,18 +112,21 @@ PyObject *smisk_MemcachedSessionStore_read(smisk_MemcachedSessionStore *self, Py
 
   memcached_st *memc = smisk_MemcachedSessionStore_memcached(self, session_id);
 
-  // Find session
-  // key = ...;
-  if(NULL /* session was found */) {
+  char *key = smisk_MemcachedSessionStore_mcdKey(self, session_id);
+  mdata = memcached_get(memc, key, strlen(key), &mdata_length, NULL, &error);
 
+  if(error == MEMCACHED_SUCCESS) {
+
+    data = PyMarshal_ReadObjectFromString(mdata, mdata_length);
     // Read session
     // Check ttl
-    // Put session data in "data"
 
   } else {
     log_debug("No session data.");
     PyErr_SetString(smisk_InvalidSessionError, "no data");
   }
+
+  PyErr_SetString(smisk_InvalidSessionError, "no data");
 
   return data;
 }
@@ -122,7 +141,9 @@ PyDoc_STRVAR(smisk_MemcachedSessionStore_write_DOC,
 PyObject *smisk_MemcachedSessionStore_write(smisk_MemcachedSessionStore *self, PyObject *args) {
   log_trace("ENTER");
 
-  PyObject *session_id, *data, *key;
+  PyObject *session_id, *data, *marshalled_data;
+  memcached_st *memc;
+  memcached_return_t rc;
 
   if ( PyTuple_GET_SIZE(args) != 2 )
     return PyErr_Format(PyExc_TypeError, "this method takes exactly 2 arguments");
@@ -133,7 +154,19 @@ PyObject *smisk_MemcachedSessionStore_write(smisk_MemcachedSessionStore *self, P
   if ( (data = PyTuple_GET_ITEM(args, 1)) == NULL )
     return NULL;
 
-  if(NULL /* check if locked */) {
+  memc = smisk_MemcachedSessionStore_memcached(self, session_id);
+  marshalled_data = PyMarshal_WriteObjectToString(data, Py_MARSHAL_VERSION);
+
+  char *key = smisk_MemcachedSessionStore_mcdKey(self, session_id);
+  char *val = PyBytes_AsString(marshalled_data);
+
+  log_debug("Data: %s length: %d", val, strlen(val));
+
+  // FIXME: use ttl from session instead of 60
+  /* memcached_return_t rc = memcached_set(memc, key, strlen(key), val, strlen(val), 60, NULL);*/
+  if(rc != MEMCACHED_SUCCESS) {
+    log_debug("failed to set key");
+
     // We want to fail silently here, because another process go to the session before we did.
     // Sorry, nothing we can do about it.
     log_debug("smisk_file_lock failed - probably because another process has locked the session");
