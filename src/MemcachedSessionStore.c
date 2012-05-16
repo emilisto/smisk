@@ -33,12 +33,28 @@ THE SOFTWARE.
 #include <libmemcached/memcached.h>
 #include <pythread.h>
 
+#pragma mark Internal
+
+/* TODO: implement garbage collection code */
+
+static int _unlink(char *fn) {
+}
+
+static time_t _is_garbage(smisk_FileSessionStore *self, const char *fn, int fd) {
+  return false;
+}
+
+static int _gc_run(void *_self) {
+  return 0;
+}
+
 #pragma mark Initialization & deallocation
 
 int smisk_MemcachedSessionStore_init(smisk_MemcachedSessionStore *self, PyObject *args, PyObject *kwargs) {  
   log_trace("ENTER");
 
-  self->memcached_config = PyBytes_FromString("testing"); Py_INCREF(self->memcached_config);
+  self->memcached_config = PyBytes_FromString("");
+  Py_INCREF(self->memcached_config);
 
   return 0;
 }
