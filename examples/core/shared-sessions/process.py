@@ -16,10 +16,8 @@ class MyApp(Application):
 
   def service(self):
 
-    #if self.request.session is False:
     if self.request.session == None:
-      # self.request.session = "coooolers: %d" % os.getpid()
-      self.request.session = "apan ola spelar boll"
+      self.request.session = "this is my fabulous session content"
 
     val = config.get('smisk.memcached.configstring')
     memcached = self.sessions.memcached_config
@@ -28,9 +26,7 @@ class MyApp(Application):
     self.response(
       "This comes from a separately running process.\n\n",
       "Host:          %s\n" % socket.getfqdn(),
-      "Config val:          %s\n" % memcached,
       "Process id:    %d\n" % os.getpid(),
-      "Process owner: %s\n" % os.getenv('USER'),
       "self.request.url: %r\n" % self.request.url,
       "self.request.env: %r\n" % self.request.env,
       "self.request.session: %r\n" % self.request.session,
@@ -39,6 +35,7 @@ class MyApp(Application):
 
 try:
 
+  # TODO: use config file to set sessions.ttl and sessions.memcached_config
   # config.load('shared-sessions.conf')
   # config('shared-sessions')
 
