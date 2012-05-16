@@ -6,6 +6,7 @@ import sys, os, socket
 from datetime import datetime
 from time import sleep
 import tempfile
+from smisk.util.main import daemonize, main
 
 class MyApp(Application):
   def __init__(self, *args, **kwargs):
@@ -17,7 +18,8 @@ class MyApp(Application):
 
     #if self.request.session is False:
     if self.request.session == None:
-      self.request.session = os.getpid()
+      # self.request.session = "coooolers: %d" % os.getpid()
+      self.request.session = "apan ola spelar boll"
 
     val = config.get('smisk.memcached.configstring')
     memcached = self.sessions.memcached_config
@@ -36,14 +38,10 @@ class MyApp(Application):
     )
 
 try:
-  # Simulate non-shared sessions for instances running on the same machine
-  # by appending PID to tmp path used by smisk_FileSessionStore_path
 
-  tempdir = "/tmp/smisk/smisk.%d" % os.getpid()
-  os.mkdir(tempdir)
-  tempfile.tempdir = tempdir
+  # config.load('shared-sessions.conf')
+  # config('shared-sessions')
 
-  config.load('shared-sessions.conf')
   MyApp().run()
 
 except KeyboardInterrupt:
