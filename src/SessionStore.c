@@ -84,8 +84,10 @@ PyObject *smisk_SessionStore_write(smisk_SessionStore *self, PyObject *args) {
 PyDoc_STRVAR(smisk_SessionStore_refresh_DOC,
   ":param  session_id: Session ID\n"
   ":type   session_id: string\n"
+  ":param  data:       Data to be associated with ``session_id``\n"
+  ":type   data:       object\n"
   ":rtype: None");
-PyObject *smisk_SessionStore_refresh(smisk_SessionStore *self, PyObject *session_id) {
+PyObject *smisk_SessionStore_refresh(smisk_SessionStore *self, PyObject *args) {
   log_trace("ENTER");
   PyErr_SetString(PyExc_NotImplementedError, "refresh");
   return NULL;
@@ -113,7 +115,7 @@ PyDoc_STRVAR(smisk_SessionStore_DOC,
 static PyMethodDef smisk_SessionStore_methods[] = {
   {"read", (PyCFunction)smisk_SessionStore_read, METH_O, smisk_SessionStore_read_DOC},
   {"write", (PyCFunction)smisk_SessionStore_write, METH_VARARGS, smisk_SessionStore_write_DOC},
-  {"refresh", (PyCFunction)smisk_SessionStore_refresh, METH_O, smisk_SessionStore_refresh_DOC},
+  {"refresh", (PyCFunction)smisk_SessionStore_refresh, METH_VARARGS, smisk_SessionStore_refresh_DOC},
   {"destroy", (PyCFunction)smisk_SessionStore_destroy, METH_O, smisk_SessionStore_destroy_DOC},
   {NULL, NULL, 0, NULL}
 };

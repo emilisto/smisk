@@ -206,8 +206,7 @@ PyObject * smisk_Application_new(PyTypeObject *type, PyObject *args, PyObject *k
     // Set default classes
     self->request_class = (PyTypeObject*)&smisk_RequestType;
     self->response_class = (PyTypeObject*)&smisk_ResponseType;
-    /* self->sessions_class = (PyTypeObject*)&smisk_FileSessionStoreType;*/
-    self->sessions_class = (PyTypeObject*)&smisk_MemcachedSessionStoreType;
+    self->sessions_class = (PyTypeObject*)&smisk_FileSessionStoreType;
   
     // Set transaction context to None - run() will set up these.
     self->request = (smisk_Request *)Py_None; Py_INCREF(Py_None);

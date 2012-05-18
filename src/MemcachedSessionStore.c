@@ -157,8 +157,7 @@ PyObject *smisk_MemcachedSessionStore_write(smisk_MemcachedSessionStore *self, P
 
   rc = memcached_set(memc, key, strlen(key), buf, size, ttl, NULL);
   if(rc != MEMCACHED_SUCCESS) {
-    char *error = memcached_strerror(memc, rc);
-    log_debug("failed to set key, memcached error: %s", error);
+    log_debug("failed to set key, memcached error: %s", memcached_strerror(memc, rc));
     memcached_free(memc);
     return NULL;
   }
@@ -171,31 +170,12 @@ PyObject *smisk_MemcachedSessionStore_write(smisk_MemcachedSessionStore *self, P
 PyDoc_STRVAR(smisk_MemcachedSessionStore_refresh_DOC,
   ":param  session_id: Session ID\n"
   ":type   session_id: string\n"
+  ":param  data:       Data to be associated with ``session_id``\n"
+  ":type   data:       object\n"
   ":rtype: None");
-PyObject *smisk_MemcachedSessionStore_refresh(smisk_MemcachedSessionStore *self, PyObject *session_id) {
+PyObject *smisk_MemcachedSessionStore_refresh(smisk_MemcachedSessionStore *self, PyObject *args) {
   log_trace("ENTER");
-
-  // TODO: this is somewhat inefficient: we do two roundtrips to the server to
-  // just update the TTL, even though we know nothing has changed. Refactor
-  // SessionStore code to give us the session data in this function.
-
-  log_debug("refreshing session");
-
-  PyObject *data = smisk_MemcachedSessionStore_read(self, session_id);
-
-  if(data == NULL) {
-    log_debug("couldn't find a session to refresh");
-    Py_RETURN_NONE;
-  }
-
-  PyObject *args = PyTuple_New(2);
-  PyTuple_SetItem(args, 0, session_id);
-  PyTuple_SetItem(args, 1, data);
-
-  PyObject *ret = smisk_MemcachedSessionStore_write(self, args);
-  Py_DECREF(args);
-
-  return ret;
+  return smisk_MemcachedSessionStore_write(self, args);
 }
 
 
@@ -234,7 +214,7 @@ PyDoc_STRVAR(smisk_MemcachedSessionStore_DOC,
 static PyMethodDef smisk_MemcachedSessionStore_methods[] = {
   {"read", (PyCFunction)smisk_MemcachedSessionStore_read, METH_O, smisk_MemcachedSessionStore_read_DOC},
   {"write", (PyCFunction)smisk_MemcachedSessionStore_write, METH_VARARGS, smisk_MemcachedSessionStore_write_DOC},
-  {"refresh", (PyCFunction)smisk_MemcachedSessionStore_refresh, METH_O, smisk_MemcachedSessionStore_refresh_DOC},
+  {"refresh", (PyCFunction)smisk_MemcachedSessionStore_refresh, METH_VARARGS, smisk_MemcachedSessionStore_refresh_DOC},
   {"destroy", (PyCFunction)smisk_MemcachedSessionStore_destroy, METH_O, smisk_MemcachedSessionStore_destroy_DOC},
   {NULL, NULL, 0, NULL}
 };
@@ -293,6 +273,6 @@ int smisk_MemcachedSessionStore_register_types(PyObject *module) {
   log_trace("ENTER");
   smisk_MemcachedSessionStoreType.tp_base = &smisk_SessionStoreType;
   if (PyType_Ready(&smisk_MemcachedSessionStoreType) == 0)
-    return PyModule_AddObject(module, "SessionStore", (PyObject *)&smisk_MemcachedSessionStoreType);
+    return PyModule_AddObject(module, "MemcachedSessionStore", (PyObject *)&smisk_MemcachedSessionStoreType);
   return -1;
 }
