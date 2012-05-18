@@ -35,16 +35,11 @@ THE SOFTWARE.
 
 #pragma mark Internal
 
-/* TODO: implement garbage collection code */
-
-static int _unlink(char *fn) {
-}
-
-static time_t _is_garbage(smisk_FileSessionStore *self, const char *fn, int fd) {
-  return false;
-}
-
 static int _gc_run(void *_self) {
+
+  // We don't need to garbage collect the session keys since they are expired
+  // and deleted by memcached.
+
   return 0;
 }
 
@@ -75,11 +70,7 @@ void smisk_MemcachedSessionStore_dealloc(smisk_MemcachedSessionStore *self) {
 #pragma mark -
 #pragma mark Methods
 
-PyDoc_STRVAR(smisk_MemcachedSessionStore_memcached_DOC,
-  ":param  session_id: Session ID\n"
-  ":type   session_id: string\n"
-  ":rtype: string");
-static PyObject *smisk_MemcachedSessionStore_memcached(smisk_MemcachedSessionStore *self, PyObject *session_id) {
+static PyObject *smisk_MemcachedSessionStore_memcached(smisk_MemcachedSessionStore *self) {
   log_trace("ENTER");
   PyObject *fn;
 
@@ -126,7 +117,7 @@ PyObject *smisk_MemcachedSessionStore_read(smisk_MemcachedSessionStore *self, Py
     return NULL;
   }
 
-  memcached_st *memc = smisk_MemcachedSessionStore_memcached(self, session_id);
+  memcached_st *memc = smisk_MemcachedSessionStore_memcached(self);
 
   char *key = smisk_MemcachedSessionStore_mcdKey(self, session_id);
   mdata = memcached_get(memc, key, strlen(key), &mdata_length, NULL, &rc);
@@ -134,7 +125,8 @@ PyObject *smisk_MemcachedSessionStore_read(smisk_MemcachedSessionStore *self, Py
   if(rc == MEMCACHED_SUCCESS) {
     data = PyMarshal_ReadObjectFromString(mdata, mdata_length);
   } else {
-    log_debug("No session data.");
+    char *error = memcached_strerror(memc, rc);
+    log_debug("couldn't get session data, memcached error: %s", error);
     PyErr_SetString(smisk_InvalidSessionError, "no data");
   }
 
@@ -168,7 +160,7 @@ PyObject *smisk_MemcachedSessionStore_write(smisk_MemcachedSessionStore *self, P
   if ( (data = PyTuple_GET_ITEM(args, 1)) == NULL )
     return NULL;
 
-  memc = smisk_MemcachedSessionStore_memcached(self, session_id);
+  memc = smisk_MemcachedSessionStore_memcached(self);
   key = smisk_MemcachedSessionStore_mcdKey(self, session_id);
 
   marshalled_data = PyMarshal_WriteObjectToString(data, Py_MARSHAL_VERSION);
@@ -178,7 +170,8 @@ PyObject *smisk_MemcachedSessionStore_write(smisk_MemcachedSessionStore *self, P
 
   rc = memcached_set(memc, key, strlen(key), buf, size, ttl, NULL);
   if(rc != MEMCACHED_SUCCESS) {
-    log_debug("failed to set key");
+    char *error = memcached_strerror(memc, rc);
+    log_debug("failed to set key, memcached error: %s", error);
 
     // We want to fail silently here, because another process go to the session before we did.
     // Sorry, nothing we can do about it.
@@ -229,8 +222,19 @@ PyDoc_STRVAR(smisk_MemcachedSessionStore_destroy_DOC,
   ":rtype: None");
 PyObject *smisk_MemcachedSessionStore_destroy(smisk_MemcachedSessionStore *self, PyObject *session_id) {
   log_trace("ENTER");
-  PyErr_SetString(PyExc_NotImplementedError, "destroy");
-  return NULL;
+
+  memcached_st *memc = smisk_MemcachedSessionStore_memcached(self);
+  char *key = smisk_MemcachedSessionStore_mcdKey(self, session_id);
+  memcached_return_t rc;
+
+  rc = memcached_delete(memc, key, strlen(key), 0);
+  if(rc != MEMCACHED_SUCCESS) {
+    char *error = memcached_strerror(memc, rc);
+    log_debug("could not destroy session, memcached error: %s", error);
+    return NULL;
+  }
+
+  Py_RETURN_NONE;
 }
 
 

@@ -19,6 +19,11 @@ class MyApp(Application):
     if self.request.session == None:
       self.request.session = "this is my fabulous session content"
 
+
+    path = self.request.url.path.strip('/')
+    if path == 'clear':
+      self.sessions.destroy(self.request.session_id)
+
     val = config.get('smisk.memcached.configstring')
     memcached = self.sessions.memcached_config
 
