@@ -251,7 +251,7 @@ static int _cleanup_session(smisk_Request* self) {
     }
     else if (self->initial_session_hash == h) {
       // Session data was unchanged. Give the session store the opportunity to refresh this sessions' TTL:
-      if ( (ro = PyObject_CallMethod(smisk_Application_current->sessions, "refresh", "O", self->session_id)) == NULL )
+      if ( (ro = PyObject_CallMethod(smisk_Application_current->sessions, "refresh", "OO", self->session_id, self->session)) == NULL )
         return -1;
       Py_DECREF(ro);
     }

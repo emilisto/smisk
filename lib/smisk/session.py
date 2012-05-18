@@ -49,7 +49,7 @@ class Store:
     '''
     raise NotImplementedError
   
-  def refresh(self, session_id):
+  def refresh(self, session_id, data):
     '''
     Refresh session.
     
@@ -63,6 +63,8 @@ class Store:
     
     :param  session_id:  Session ID
     :type   session_id:  string
+    :param  data:        Data to be associated with ``session_id``
+    :type   data:        object
     :rtype: None
     '''
     raise NotImplementedError

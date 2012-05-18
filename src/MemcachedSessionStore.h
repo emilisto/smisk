@@ -37,7 +37,7 @@ extern PyTypeObject smisk_MemcachedSessionStoreType;
 int smisk_MemcachedSessionStore_register_types (PyObject *module);
 
 PyObject *smisk_MemcachedSessionStore_new (PyTypeObject *type, PyObject *args, PyObject *kwds);
-PyObject *smisk_MemcachedSessionStore_refresh (smisk_MemcachedSessionStore *self, PyObject *session_id);
+PyObject *smisk_MemcachedSessionStore_refresh (smisk_MemcachedSessionStore *self, PyObject *args);
 PyObject *smisk_MemcachedSessionStore_gc (smisk_MemcachedSessionStore* self);
 
 #endif

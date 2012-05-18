@@ -321,10 +321,16 @@ PyObject *smisk_FileSessionStore_write(smisk_FileSessionStore *self, PyObject *a
 PyDoc_STRVAR(smisk_FileSessionStore_refresh_DOC,
   ":param  session_id: Session ID\n"
   ":type   session_id: string\n"
+  ":param  data:       Data to be associated with ``session_id``\n"
+  ":type   data:       object\n"
   ":rtype: None");
-PyObject *smisk_FileSessionStore_refresh(smisk_FileSessionStore *self, PyObject *session_id) {
+PyObject *smisk_FileSessionStore_refresh(smisk_FileSessionStore *self, PyObject *args) {
   log_trace("ENTER");
   PyObject *fn;
+  PyObject *session_id;
+
+  if ( (session_id = PyTuple_GET_ITEM(args, 0)) == NULL )
+    return NULL;
   
   if ( (fn = smisk_FileSessionStore_path(self, session_id)) == NULL )
     return NULL;
@@ -381,7 +387,7 @@ PyDoc_STRVAR(smisk_FileSessionStore_DOC,
 static PyMethodDef smisk_FileSessionStore_methods[] = {
   {"read", (PyCFunction)smisk_FileSessionStore_read, METH_O, smisk_FileSessionStore_read_DOC},
   {"write", (PyCFunction)smisk_FileSessionStore_write, METH_VARARGS, smisk_FileSessionStore_write_DOC},
-  {"refresh", (PyCFunction)smisk_FileSessionStore_refresh, METH_O, smisk_FileSessionStore_refresh_DOC},
+  {"refresh", (PyCFunction)smisk_FileSessionStore_refresh, METH_VARARGS, smisk_FileSessionStore_refresh_DOC},
   {"destroy", (PyCFunction)smisk_FileSessionStore_destroy, METH_O, smisk_FileSessionStore_destroy_DOC},
   
   {"path", (PyCFunction)smisk_FileSessionStore_path, METH_O, smisk_FileSessionStore_path_DOC},
