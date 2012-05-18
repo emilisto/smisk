@@ -49,17 +49,12 @@ int smisk_MemcachedSessionStore_init(smisk_MemcachedSessionStore *self, PyObject
   log_trace("ENTER");
 
   self->memcached_config = PyBytes_FromString("");
-  Py_INCREF(self->memcached_config);
 
   return 0;
 }
 
 void smisk_MemcachedSessionStore_dealloc(smisk_MemcachedSessionStore *self) {
   log_trace("ENTER");
-
-  if(self->memc != NULL) {
-    memcached_free(self->memc);
-  }
 
   Py_DECREF(self->memcached_config);
   ((smisk_SessionStore *)self)->ob_type->tp_base->tp_dealloc((PyObject *)self);
@@ -69,18 +64,6 @@ void smisk_MemcachedSessionStore_dealloc(smisk_MemcachedSessionStore *self) {
 
 #pragma mark -
 #pragma mark Methods
-
-static PyObject *smisk_MemcachedSessionStore_memcached(smisk_MemcachedSessionStore *self) {
-  log_trace("ENTER");
-  PyObject *fn;
-
-  if(self->memc == NULL) {
-    char *config = PyBytes_AsString(self->memcached_config);
-    self->memc = memcached(config, strlen(config));
-  }
-
-  return self->memc;
-}
 
 PyDoc_STRVAR(smisk_MemcachedSessionStore_mcdKey_DOC,
   ":param  session_id: Session ID\n"
@@ -117,7 +100,8 @@ PyObject *smisk_MemcachedSessionStore_read(smisk_MemcachedSessionStore *self, Py
     return NULL;
   }
 
-  memcached_st *memc = smisk_MemcachedSessionStore_memcached(self);
+  char *config = PyBytes_AsString(self->memcached_config);
+  memcached_st *memc = memcached(config, strlen(config));
 
   char *key = smisk_MemcachedSessionStore_mcdKey(self, session_id);
   mdata = memcached_get(memc, key, strlen(key), &mdata_length, NULL, &rc);
@@ -130,7 +114,7 @@ PyObject *smisk_MemcachedSessionStore_read(smisk_MemcachedSessionStore *self, Py
     PyErr_SetString(smisk_InvalidSessionError, "no data");
   }
 
-  PyErr_SetString(smisk_InvalidSessionError, "no data");
+  memcached_free(memc);
 
   return data;
 }
@@ -147,6 +131,7 @@ PyObject *smisk_MemcachedSessionStore_write(smisk_MemcachedSessionStore *self, P
 
   PyObject *session_id, *data, *marshalled_data;
   char *buf, *key; Py_ssize_t size;
+  char *config;
   memcached_st *memc;
   memcached_return_t rc;
   int ttl = ((smisk_SessionStore *)self)->ttl;
@@ -160,7 +145,9 @@ PyObject *smisk_MemcachedSessionStore_write(smisk_MemcachedSessionStore *self, P
   if ( (data = PyTuple_GET_ITEM(args, 1)) == NULL )
     return NULL;
 
-  memc = smisk_MemcachedSessionStore_memcached(self);
+  config = PyBytes_AsString(self->memcached_config);
+  memc = memcached(config, strlen(config));
+
   key = smisk_MemcachedSessionStore_mcdKey(self, session_id);
 
   marshalled_data = PyMarshal_WriteObjectToString(data, Py_MARSHAL_VERSION);
@@ -172,15 +159,11 @@ PyObject *smisk_MemcachedSessionStore_write(smisk_MemcachedSessionStore *self, P
   if(rc != MEMCACHED_SUCCESS) {
     char *error = memcached_strerror(memc, rc);
     log_debug("failed to set key, memcached error: %s", error);
-
-    // We want to fail silently here, because another process go to the session before we did.
-    // Sorry, nothing we can do about it.
-    log_debug("smisk_file_lock failed - probably because another process has locked the session");
-  } else {
-    // Save session in memcached
-    log_debug("Wrote s");
+    memcached_free(memc);
+    return NULL;
   }
 
+  memcached_free(memc);
   Py_RETURN_NONE;
 }
 
@@ -223,17 +206,20 @@ PyDoc_STRVAR(smisk_MemcachedSessionStore_destroy_DOC,
 PyObject *smisk_MemcachedSessionStore_destroy(smisk_MemcachedSessionStore *self, PyObject *session_id) {
   log_trace("ENTER");
 
-  memcached_st *memc = smisk_MemcachedSessionStore_memcached(self);
+  char *config = PyBytes_AsString(self->memcached_config);
+  memcached_st *memc = memcached(config, strlen(config));
+
   char *key = smisk_MemcachedSessionStore_mcdKey(self, session_id);
   memcached_return_t rc;
 
   rc = memcached_delete(memc, key, strlen(key), 0);
   if(rc != MEMCACHED_SUCCESS) {
-    char *error = memcached_strerror(memc, rc);
-    log_debug("could not destroy session, memcached error: %s", error);
+    log_debug("could not destroy session, memcached error: %s", memcached_strerror(memc, rc));
+    memcached_free(memc);
     return NULL;
   }
 
+  memcached_free(memc);
   Py_RETURN_NONE;
 }
 

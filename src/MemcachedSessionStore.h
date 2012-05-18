@@ -27,7 +27,6 @@ THE SOFTWARE.
 
 typedef struct {
   smisk_SessionStore parent;
-  memcached_st   *memc;
   PyObject       *memcached_config; // str
 
   // Public Python & C
